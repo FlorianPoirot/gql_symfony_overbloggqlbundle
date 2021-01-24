@@ -1,0 +1,80 @@
+version: "3.1"
+
+volumes:
+  dbdata:
+
+networks:
+  gql_symfony:
+
+services:
+
+  db:
+    image: mysql:5.7
+    container_name: gql-symfony-db
+    ports:
+      - "3308:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gql
+      MYSQL_USER: gql
+      MYSQL_PASSWORD: gql
+    networks:
+      - gql_symfony
+
+  php-fpm:
+    build: phpdocker/php-fpm
+    container_name: gql-symfony-php-fpm
+    volumes:
+      - ./:/var/www/gql_symfony/
+    user: 1000:1000
+    environment:
+      PHP_IDE_CONFIG: "serverName=Docker"
+      APPLICATION_CONTAINER_NAME: gql_symfony
+    networks:
+      - gql_symfony
+    depends_on:
+      - db
+    links:
+      - db
+
+  webserver:
+    image: nginx
+    container_name: gql-symfony-webserver
+    ports:
+      - "80:80"
+    volumes:
+      - .:/var/www/gql_symfony/
+      - ./phpdocker/nginx:/etc/nginx/templates
+    environment:
+      NGINX_PORT: 80
+      NGINX_HOST: "gql-symfony.local"
+      DOCKER_PHP: php-fpm
+      APPLICATION_NAME: gql_symfony
+    depends_on:
+      - php-fpm
+    links:
+      - php-fpm
+    networks:
+      gql_symfony:
+        aliases:
+          - ssymfony.local
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: gql-symfony-mailhog
+    ports:
+      - "8025:8025"
+
+#  redis:
+#    image: redis:alpine
+#    container_name: gql-symfony-redis
+#
+#  elasticsearch:
+#    image: elasticsearch:6.5.4
+#    container_name: gql-symfony-elasticsearch
+
+
+
+
